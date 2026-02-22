@@ -1,0 +1,18 @@
+{
+    "cols": 5,
+    "rows": 5,
+    "max_vertices": 4,
+    "goal": "6",
+    "grid": [
+        ["W", "R", "Gd","R", "Bk"],
+        ["Bk","L", "W", "C", "Bk"],
+        ["Bk","C", "W", "W", "R" ],
+        ["R", "W", "Gd","C", "W" ],
+        ["Gd","R", "R", "Bk","Bk"]
+    ],
+    "info": {
+        "creator": "The_upgrater",
+        "found": "?",
+        "verified": "Nulareawa Bruteforcer"
+    }
+}

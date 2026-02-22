@@ -1,0 +1,18 @@
+{
+    "cols": 5,
+    "rows": 5,
+    "max_vertices": 5,
+    "goal": "11 1/20",
+    "grid": [
+        ["W", "Bl","L", "Bk","W" ],
+        ["Bk","C", "W", "W", "Bl"],
+        ["R", "C", "Gl","W", "R" ],
+        ["Bl","W", "W", "Bl","Bk"],
+        ["W", "Bk","Bl","Gd","Bl"]
+    ],
+    "info": {
+        "creator": "Nulareawa",
+        "found": "Nulareawa",
+        "verified": "?"
+    }
+}

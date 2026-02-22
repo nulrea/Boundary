@@ -1,0 +1,21 @@
+{
+    "cols": 8,
+    "rows": 8,
+    "max_vertices": 5,
+    "goal": "15 1/2",
+    "grid": [
+        ["W", "Bk","Bk","Bk","W", "R", "Bk","Bk"],
+        ["W", "R", "W", "W", "G", "W", "W", "Bk"],
+        ["R", "R", "W", "W", "W", "C", "Bk","W" ],
+        ["W", "L", "W", "W", "Bk","W", "W", "W" ],
+        ["W", "W", "W", "W", "Bk","W", "W", "W" ],
+        ["R", "C", "W", "G", "W", "W", "W", "W" ],
+        ["R", "R", "R", "W", "Bk","Bk","W", "W" ],
+        ["W", "W", "W", "W", "Bk","W", "W", "W" ]
+    ],
+    "info": {
+        "creator": "The_upgrater",
+        "found": "Nulareawa",
+        "verified": "-"
+    }
+}

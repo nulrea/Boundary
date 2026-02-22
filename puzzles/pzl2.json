@@ -1,0 +1,18 @@
+{
+    "cols": 9,
+    "rows": 5,
+    "max_vertices": 4,
+    "goal": "10 1/2",
+    "grid": [
+        ["Bl","W", "W", "Bl","C", "W", "R", "R", "Bk"],
+        ["W", "Bk","G", "W", "C", "W", "Gd","R", "Bl"],
+        ["W", "R", "W", "W", "C", "Gd","W", "W", "Bk"],
+        ["Bk","R", "Gd","R", "C", "W", "W", "W", "R" ],
+        ["W", "Bl","W", "Bk","C", "Gd","R", "Bk","W" ]
+    ],
+    "info": {
+        "creator": "The_upgrater",
+        "found": "^",
+        "verified": "Nulareawa Bruteforcer"
+    }
+}

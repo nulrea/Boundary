@@ -1,0 +1,20 @@
+{
+    "cols": 9,
+    "rows": 6,
+    "max_vertices": 5,
+    "goal": "17",
+    "grid": [
+        ["Bk","W", "W", "W", "W", "Bk","Bk","Bk","W" ],
+        ["Bk","Bk","Bk","W", "W", "W", "Bk","W", "W" ],
+        ["W", "W", "Bk","W", "W", "W", "W", "W", "W" ],
+        ["W", "W", "W", "W", "W", "W", "Bk","Bk","Bk"],
+        ["Bk","W", "W", "W", "W", "W", "W", "W", "W" ],
+        ["Bk","W", "Bk","W", "W", "W", "W", "W", "Bk"]
+    ],
+    "info": {
+        "title": "1-11",
+        "creator": "Nulareawa",
+        "found": "^",
+        "verified": "?"
+    }
+}

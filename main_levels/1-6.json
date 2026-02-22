@@ -1,0 +1,20 @@
+{
+    "cols": 5,
+    "rows": 5,
+    "max_vertices": 4,
+    "goal": "5 1/2",
+    "grid": [
+        ["Bk","Bk","W", "Bk","W" ],
+        ["Bk","W", "W", "Bk","Bk"],
+        ["W", "W", "W", "W", "W" ],
+        ["Bk","Bk","W", "Bk","Bk"],
+        ["W", "Bk","W", "Bk","Bk"]
+    ],
+    "info": {
+        "title": "1-6",
+        "description": "Good luck.",
+        "creator": "The_upgrater",
+        "found": "Nulareawa",
+        "verified": "^"
+    }
+}

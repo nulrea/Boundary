@@ -1,0 +1,17 @@
+{
+    "cols": 4,
+    "rows": 4,
+    "max_vertices": 4,
+    "goal": "7",
+    "grid": [
+        ["Bk","R", "W", "Bk"],
+        ["W", "W", "W", "Gd"],
+        ["L", "W", "W", "W" ],
+        ["Bk","T", "W", "Bk"]
+    ],
+    "info": {
+        "creator": "Codex",
+        "found": "Electrino",
+        "verified": "Nulareawa Bruteforcer"
+    }
+}

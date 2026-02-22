@@ -1,0 +1,19 @@
+{
+    "cols": 6,
+    "rows": 5,
+    "max_vertices": 4,
+    "goal": "6",
+    "grid": [
+        ["W", "W", "W", "W", "W", "Bk"],
+        ["W", "Bk","W", "Bk","W", "W" ],
+        ["W", "W", "W", "W", "W", "W" ],
+        ["Bk","W", "Bk","W", "Bk","W" ],
+        ["W", "W", "W", "W", "W", "W" ]
+    ],
+    "info": {
+        "title": "1-7",
+        "creator": "Nulareawa",
+        "found": "^",
+        "verified": "?"
+    }
+}

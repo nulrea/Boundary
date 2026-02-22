@@ -1,0 +1,18 @@
+{
+    "cols": 3,
+    "rows": 3,
+    "max_vertices": 3,
+    "goal": "3",
+    "grid": [
+        ["Bk","W" ,"W" ],
+        ["W" ,"W" ,"Bk"],
+        ["W" ,"W" ,"Bk"]
+    ],
+    "info": {
+        "title": "1-2",
+        "description": "You may only place vertices on board intersections.",
+        "creator": "Nulareawa",
+        "found": "^",
+        "verified": "^"
+    }
+}
