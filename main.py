@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Sequence
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -7,7 +8,7 @@ from fractions import Fraction
 from abc import ABC, abstractmethod
 import os
 from turtle import width
-from typing import Literal
+from typing import Callable, Literal
 from itertools import combinations, permutations
 
 # --- 0. Constants or at least Loose Constants ---
@@ -119,6 +120,38 @@ class GemCell(Cell):
     def result(self, coverage: Fraction) -> Fraction:
         return coverage + 1 if coverage > 0 else Fraction(0)
     
+class NoVertexCell(Cell):  # special cell
+    @property
+    def document(self):
+        return "No vertices can be placed on this tile."
+
+    def result(self, coverage: Fraction) -> Fraction:
+        return coverage
+    
+class ForcedVertexCell(Cell):  # special cell
+    @property
+    def document(self):
+        return "At least 1 vertex must be placed on this tile."
+
+    def result(self, coverage: Fraction) -> Fraction:
+        return coverage if coverage > 0 else very_negative
+    
+class NoEdgeCell(Cell):  # special cell
+    @property
+    def document(self):
+        return "No lines can cover any edges on this tile."
+
+    def result(self, coverage: Fraction) -> Fraction:
+        return coverage
+    
+class ForcedEdgeCell(Cell):  # special cell
+    @property
+    def document(self):
+        return "At least 1 edge of this tile must be covered by the polygon."
+
+    def result(self, coverage: Fraction) -> Fraction:
+        return coverage if coverage > 0 else very_negative
+    
 class NegativeCell(Cell):
     @property
     def document(self):
@@ -126,14 +159,6 @@ class NegativeCell(Cell):
 
     def result(self, coverage: Fraction) -> Fraction:
         return - coverage
-    
-class BonusCell(Cell):
-    @property
-    def document(self):
-        return "Gives 1 point regardless but it has to be touched."
-
-    def result(self, coverage: Fraction) -> Fraction:
-        return Fraction(0) if coverage == 0 else Fraction(1)
 
 class DoubleCell(Cell):
     @property
@@ -142,6 +167,22 @@ class DoubleCell(Cell):
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage * 2
+    
+class TrapCell(Cell):
+    @property
+    def document(self):
+        return "A cell that gives -1 point if touched. Scoring is possible however."
+    
+    def result(self, coverage: Fraction) -> Fraction:
+        return coverage - 1 if coverage > 0 else Fraction(0)
+
+class BonusCell(Cell):
+    @property
+    def document(self):
+        return "Gives 1 point regardless but it has to be touched."
+
+    def result(self, coverage: Fraction) -> Fraction:
+        return Fraction(0) if coverage == 0 else Fraction(1)
 
 # Registry to map string names in JSON to Classes
 CELL_TYPES: dict[str, type[Cell]] = {
@@ -155,6 +196,14 @@ CELL_TYPES: dict[str, type[Cell]] = {
     "R": MineCell,
     "Gl":HoleCell,
     "Bl":GemCell,
+    "Pk":NoVertexCell,
+    "Pr":ForcedVertexCell,
+    "Br":NoEdgeCell,
+    "Y": ForcedEdgeCell,
+    "O": NegativeCell,
+    "Lv":DoubleCell,
+    "M": TrapCell,
+    "Pf":BonusCell
 }
 color_map: dict[Cell, str] = {}
 
@@ -269,7 +318,28 @@ def get_unique_structures(elements: Sequence[tuple[Fraction, Fraction]]) -> list
             
     return unique_list
 
+def cell_to_vertices(cell: tuple[Fraction, Fraction]) -> list[tuple[Fraction, Fraction]]:
+    return [(cell[0], cell[1]), (cell[0]+1, cell[1]), (cell[0], cell[1]+1), (cell[0]+1, cell[1]+1)]
+
+def cell_to_edges(cell: tuple[Fraction, Fraction]) -> list[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]]:
+    vertices = cell_to_vertices(cell)
+    edges = []
+    for i in range(4):
+        edges.append((vertices[i], vertices[(i+1)%4]))
+    return edges
+
 # --- 2. Geometric Logic (Pure Python) ---
+
+def is_collinear3(p1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], p3: tuple[Fraction, Fraction]) -> bool:
+    """Check if points p1, p2, p3 are collinear."""
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    return (x2 - x1) * (y3 - y2) == (y2 - y1) * (x3 - x2)
+
+def is_collinear4(p1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], p3: tuple[Fraction, Fraction], p4: tuple[Fraction, Fraction]) -> bool:
+    """Check if points p1, p2, p3, p4 are collinear."""
+    return is_collinear3(p1, p2, p3) and is_collinear3(p1, p2, p4)
 
 def inside(p: tuple[Fraction, Fraction], edge: str, val: Fraction) -> bool:
     """Check if point p is inside the clip edge."""
@@ -347,7 +417,8 @@ def on_segment(p: tuple[Fraction, Fraction], q: tuple[Fraction, Fraction], r: tu
     return (q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and
             q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1]))
 
-def intersect(p1: tuple[Fraction, Fraction], q1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], q2: tuple[Fraction, Fraction]) -> bool:
+def segment_intersection(p1: tuple[Fraction, Fraction], q1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], q2: tuple[Fraction, Fraction]) -> tuple[Fraction, Fraction] | None:
+    """Returns the intersection point of two line segments, or None if they don't intersect."""
     o1 = get_orientation(p1, q1, p2)
     o2 = get_orientation(p1, q1, q2)
     o3 = get_orientation(p2, q2, p1)
@@ -355,14 +426,39 @@ def intersect(p1: tuple[Fraction, Fraction], q1: tuple[Fraction, Fraction], p2: 
 
     # General case: segments cross
     if o1 != o2 and o3 != o4:
-        return True
+        # Calculate intersection point
+        x1, y1 = p1
+        x2, y2 = q1
+        x3, y3 = p2
+        x4, y4 = q2
+        
+        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        if denom == 0:
+            return None
+        
+        t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+        return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
 
     # Special cases: segments are collinear and one point is on the other segment
-    if o1 == 0 and on_segment(p1, p2, q1): return True
-    if o2 == 0 and on_segment(p1, q2, q1): return True
-    if o3 == 0 and on_segment(p2, p1, q2): return True
-    if o4 == 0 and on_segment(p2, q1, q2): return True
-    return False
+    if o1 == 0 and on_segment(p1, p2, q1): return p2
+    if o2 == 0 and on_segment(p1, q2, q1): return q2
+    if o3 == 0 and on_segment(p2, p1, q2): return p1
+    if o4 == 0 and on_segment(p2, q1, q2): return q1
+    return None
+
+def intersect(p1: tuple[Fraction, Fraction], q1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], q2: tuple[Fraction, Fraction]) -> bool:
+    """Returns True if two line segments intersect."""
+    return segment_intersection(p1, q1, p2, q2) is not None
+
+def half_plane(x: Fraction, y: Fraction) -> bool:
+    """idk"""
+    return (y > 0) or (y == 0 and x > 0)
+
+def compare_angles(center: tuple[Fraction, Fraction]) -> Callable[[tuple[Fraction, Fraction]], tuple[int, Fraction]]:
+    def key(point: tuple[Fraction, Fraction]) -> tuple[int, Fraction]:
+        vec = (point[0] - center[0], point[1] - center[1])
+        return (0 if half_plane(*vec) else 1, vec[1] / vec[0] if vec[0] != 0 else Fraction('inf'))
+    return key
 
 def validate_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
     n = len(polygon)
@@ -389,6 +485,180 @@ def validate_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
                 return False
             
     return True
+
+def check_collinear_overlap(p1_i: tuple[Fraction, Fraction], p2_i: tuple[Fraction, Fraction], 
+                            p1_j: tuple[Fraction, Fraction], p2_j: tuple[Fraction, Fraction]) -> bool:
+    """Check if two collinear segments overlap."""
+    if p1_i[0] == p2_i[0]:  # Vertical
+        pl_i, pr_i = sorted([p1_i, p2_i], key=lambda p: p[1])
+        pl_j, pr_j = sorted([p1_j, p2_j], key=lambda p: p[1])
+    else:  # Horizontal or diagonal
+        pl_i, pr_i = sorted([p1_i, p2_i], key=lambda p: p[0])
+        pl_j, pr_j = sorted([p1_j, p2_j], key=lambda p: p[0])
+    
+    overlap_start = max(pl_i, pl_j)
+    overlap_end = min(pr_i, pr_j)
+    return overlap_start < overlap_end
+
+def special_validate_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
+    for i in range(len(polygon)):
+        if is_collinear3(polygon[i - 1], polygon[i], polygon[(i + 1) % len(polygon)]):
+            return False
+    for i in range(len(polygon)):
+        for j in range(i + 2, len(polygon)):
+            p1_i = polygon[i]
+            p2_i = polygon[(i + 1) % len(polygon)]
+            p1_j = polygon[j]
+            p2_j = polygon[(j + 1) % len(polygon)]
+            
+            if is_collinear4(p1_i, p2_i, p1_j, p2_j):
+                if p1_i[0] == p2_i[0]:
+                    pl_i, pr_i = sorted([p1_i, p2_i], key=lambda p: p[1])
+                    pl_j, pr_j = sorted([p1_j, p2_j], key=lambda p: p[1])
+                else:
+                    pl_i, pr_i = sorted([p1_i, p2_i], key=lambda p: p[0])
+                    pl_j, pr_j = sorted([p1_j, p2_j], key=lambda p: p[0])
+                overlap_start = max(pl_i, pl_j)
+                overlap_end = min(pr_i, pr_j)
+                if overlap_start < overlap_end:
+                    return False
+    return True
+
+def _vec_sub(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> tuple[Fraction, Fraction]:
+    """Return vector a-b."""
+    return (a[0] - b[0], a[1] - b[1])
+
+def _cross(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> Fraction:
+    """2D cross product of vectors a and b."""
+    return a[0] * b[1] - a[1] * b[0]
+
+def _sort_along_edge(p1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], pts: set[tuple[Fraction, Fraction]]):
+    """Return pts sorted by their parametric position along the segment p1-p2."""
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+
+    def param(pt: tuple[Fraction, Fraction]) -> Fraction:
+        if abs(dx) >= abs(dy):
+            return (pt[0] - p1[0]) / dx if dx != 0 else Fraction(0)
+        else:
+            return (pt[1] - p1[1]) / dy if dy != 0 else Fraction(0)
+
+    return sorted(pts, key=param)
+
+def _angle(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> float:
+    """Return angle of vector a->b for CCW sorting."""
+    dx = float(b[0] - a[0])
+    dy = float(b[1] - a[1])
+    return math.atan2(dy, dx)
+
+def _polygon_area(poly: Sequence[tuple[Fraction, Fraction]]) -> Fraction:
+    s = Fraction(0)
+    for i in range(len(poly)):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % len(poly)]
+        s += x1 * y2 - x2 * y1
+    return s / 2
+
+def _point_in_polygon(pt: tuple[Fraction, Fraction], polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
+    """Even-odd rule point-in-polygon test."""
+    x, y = pt
+    crossings = 0
+    n = len(polygon)
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+        if ((y1 > y) != (y2 > y)):
+            x_int = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if x_int > x:
+                crossings += 1
+    return crossings % 2 == 1
+
+def split_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> list[Sequence[tuple[Fraction, Fraction]]]:  # might not work
+    pts = [(Fraction(x), Fraction(y)) for x, y in polygon]
+    n = len(pts)
+    if n < 3:
+        return []
+
+    edges = [(pts[i], pts[(i + 1) % n]) for i in range(n)]
+
+    # --- collect points along edges ---
+    edge_points: defaultdict[int, set[tuple[Fraction, Fraction]]] = defaultdict(set)
+    for i, (a, b) in enumerate(edges):
+        edge_points[i].add(a)
+        edge_points[i].add(b)
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if j == i or j == (i + 1) % n or i == (j + 1) % n:
+                continue
+            inter = segment_intersection(edges[i][0], edges[i][1],
+                                         edges[j][0], edges[j][1])
+            if inter:
+                edge_points[i].add(inter)
+                edge_points[j].add(inter)
+
+    # --- build planar graph ---
+    graph: defaultdict[tuple[Fraction, Fraction], set[tuple[Fraction, Fraction]]] = defaultdict(set)
+    for i, (a, b) in enumerate(edges):
+        pts_on_edge = _sort_along_edge(a, b, edge_points[i])
+        for u, v in zip(pts_on_edge, pts_on_edge[1:]):
+            graph[u].add(v)
+            graph[v].add(u)
+
+    # --- CCW ordering at each vertex ---
+    ordered: dict[tuple[Fraction, Fraction], list[tuple[Fraction, Fraction]]] = {}
+    for v, nbrs in graph.items():
+        nbr_list = list(nbrs)
+        nbr_list.sort(key=lambda p: _angle(v, p))
+        ordered[v] = nbr_list
+
+    # --- face extraction ---
+    visited: set[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]] = set()
+    faces: list[Sequence[tuple[Fraction, Fraction]]] = []
+
+    for u in ordered:
+        for v in ordered[u]:
+            if (u, v) in visited:
+                continue
+            face: list[tuple[Fraction, Fraction]] = []
+            start = (u, v)
+            curr = start
+            safety = 0
+            while True:
+                safety += 1
+                if safety > 10000:
+                    break  # guard against infinite loops
+                a, b = curr
+                if curr in visited:
+                    break
+                visited.add(curr)
+                face.append(a)
+                nbrs = ordered[b]
+                idx = nbrs.index(a)
+                next_v = nbrs[(idx - 1) % len(nbrs)]
+                curr = (b, next_v)
+                if curr == start:
+                    visited.add(curr)
+                    break
+            if len(face) >= 3:
+                faces.append(face)
+
+    if not faces:
+        return []
+
+    # remove outer face (largest by absolute area)
+    outer_index = max(range(len(faces)), key=lambda i: abs(_polygon_area(faces[i])))
+    interior_faces = [faces[i] for i in range(len(faces)) if i != outer_index]
+
+    # even-odd filtering
+    result: list[Sequence[tuple[Fraction, Fraction]]] = []
+    for f in interior_faces:
+        cx = sum(p[0] for p in f) / Fraction(len(f))
+        cy = sum(p[1] for p in f) / Fraction(len(f))
+        # ensure the test point has Fraction components
+        if _point_in_polygon((Fraction(cx), Fraction(cy)), pts):
+            result.append(f)
+    return result
 
 # --- 3. The Game Engine & GUI ---
 
@@ -440,6 +710,11 @@ class PolygonGame(tk.Tk):
         self.last_vertex: tuple[Fraction, Fraction] | None = None
         self.goal: Fraction = Fraction(0, 1)
         self.banned_vertices: set[tuple[Fraction, Fraction]] = set()
+        self.cell_with_vertex_req: set[tuple[Fraction, Fraction]] = set()
+        self.banned_edges: set[frozenset[tuple[Fraction, Fraction]]] = set()
+        self.cell_with_edge_req: set[tuple[Fraction, Fraction]] = set()
+        self.polygon_mode: Literal["R", "B"] = "R"
+        self.is10x_mode: tk.BooleanVar = tk.BooleanVar(value=False)
 
         self.setup_ui()
         self.create_dummy_board()
@@ -482,6 +757,9 @@ class PolygonGame(tk.Tk):
         # --- Status Bar ---
         self.status_frame = tk.Frame(self, bd=1, relief=tk.SUNKEN)
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.x10 = tk.Checkbutton(self.status_frame, text="Don't multiply by 10", variable=self.is10x_mode)
+        self.x10.pack(side=tk.LEFT, padx=10)
         
         self.lbl_score = tk.Label(self.status_frame, text="Score: 0", font=("Arial", 12, "bold"))
         self.lbl_score.pack(side=tk.LEFT, padx=10)
@@ -536,11 +814,27 @@ class PolygonGame(tk.Tk):
         for r in range(self.rows):
             row_list = []
             for c in range(self.cols):
-                type_name = data['grid'][r][c]
+                type_name: str = data['grid'][r][c]
                 # Default to Normal if type not found
                 cell_cls: type[Cell] = CELL_TYPES.get(type_name, BasicCell)
                 cell_obj: Cell = cell_cls(texture_path=f"textures/{type_name}.png")
                 row_list.append(cell_obj)
+                # Special cells
+                coord: tuple[Fraction, Fraction] = (Fraction(c), Fraction(r))
+                bl = (Fraction(c)+1, Fraction(r))
+                tr = (Fraction(c), Fraction(r)+1)
+                tl = (Fraction(c)+1, Fraction(r)+1)
+                if isinstance(cell_obj, ForcedVertexCell):
+                    self.cell_with_vertex_req.add(coord)
+                if isinstance(cell_obj, NoVertexCell):
+                    self.banned_vertices.add(coord)
+                if isinstance(cell_obj, ForcedEdgeCell):
+                    self.cell_with_edge_req.add(coord)
+                if isinstance(cell_obj, NoEdgeCell):
+                    self.banned_edges.add(frozenset({coord, bl}))
+                    self.banned_edges.add(frozenset({coord, tr}))
+                    self.banned_edges.add(frozenset({bl, tl}))
+                    self.banned_edges.add(frozenset({tr, tl}))
             self.cell_instances.append(row_list)
             
         self.current_vertices = []
@@ -548,6 +842,10 @@ class PolygonGame(tk.Tk):
         self.goal = more_numbers_to_fraction(data['goal']) if isinstance(data['goal'], str) else Fraction(0, 1)
         info: dict = self.board_data.get('info', {})
         self.lbl_desc.config(text=info.get('description', "Click to add vertices. Drag to move. Right-click to undo."))
+        if data.get('polygon_mode') in ["R", "B"]:
+            self.polygon_mode = data['polygon_mode']
+        else:
+            self.polygon_mode = "R"
         self.draw_board()
         self.update_status()
 
@@ -710,16 +1008,45 @@ class PolygonGame(tk.Tk):
         
         total_score = Fraction(0, 1)
 
-        for r in range(self.rows):
-            for c in range(self.cols):
-                total_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), self.current_vertices))
-        final_val = float(total_score)
+        if self.polygon_mode == "R":
+            for r in range(self.rows):
+                for c in range(self.cols):
+                    total_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), self.current_vertices))
+        elif self.polygon_mode == "B":
+            faces = split_polygon(self.current_vertices)
+            for face in faces:
+                face_score = Fraction(0, 1)
+                for r in range(self.rows):
+                    for c in range(self.cols):
+                        face_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), face))
         
-        if final_val < threshold:
+        if total_score < threshold:
             self.lbl_score.config(text="Invalid polygon", fg="red")
-        elif not validate_polygon(self.current_vertices):
+        elif (not validate_polygon(self.current_vertices)) if self.polygon_mode == "R" else (not special_validate_polygon(self.current_vertices)):
             self.lbl_score.config(text="Disallowed polygon", fg="red")
+        elif any(v in self.banned_vertices for v in self.current_vertices):
+            self.lbl_score.config(text="Polygon uses banned vertex", fg="red")
+        elif not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
+            self.lbl_score.config(text="Polygon misses required vertex", fg="red")
+        elif any(frozenset({edge[0], edge[1]}) in self.banned_edges for edge in zip(self.current_vertices, self.current_vertices[1:] + [self.current_vertices[0]])):
+            self.lbl_score.config(text="Polygon uses banned edge", fg="red")
+        elif not all(
+            any(
+                check_collinear_overlap(
+                    self.current_vertices[i],
+                    self.current_vertices[(i+1) % len(self.current_vertices)],
+                    edge[0],
+                    edge[1]
+                )
+                for i in range(len(self.current_vertices))
+                for edge in cell_to_edges(cell)
+            )
+            for cell in self.cell_with_edge_req
+        ):
+            self.lbl_score.config(text="Polygon misses required edge", fg="red")
         else:
+            total_score = total_score if self.is10x_mode.get() else total_score * 10
+            final_val = float(total_score)
             fg = "green" if total_score >= self.goal else "black"
             if total_score.denominator == 1:
                 self.lbl_score.config(text=f"Score: {total_score.numerator} ({str(total_score) + ' or ' if total_score.numerator == 0 else ''}{final_val})", fg=fg)
@@ -740,7 +1067,7 @@ class PolygonGame(tk.Tk):
         i = 0
         for combo in possible_combinations:
             for perm in get_unique_structures(combo):
-                if validate_polygon(perm):
+                if (validate_polygon(perm) if self.polygon_mode == "R" else special_validate_polygon(perm)):
                     score = Fraction(0, 1)
                     for r in range(self.rows):
                         for c in range(self.cols):

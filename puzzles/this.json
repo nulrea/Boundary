@@ -1,0 +1,21 @@
+{
+    "cols": 10,
+    "rows": 8,
+    "max_vertices": 20,
+    "goal": "0",
+    "grid": [
+        ["Bk","Bk","Bk","Bk","Pr","Pk","Bk","Bk","Bk","Bk"],
+        ["Bk","Bk","Bk","Br","Bl","Bl","Br","Bk","Bk","Bk"],
+        ["Bk","Bk","Bk","R", "Bl","Bl","R", "Bk","Bk","Bk"],
+        ["Bl","R", "R", "Pf","M", "M", "Pf","R", "R", "Bl"],
+        ["Bl","Gd","Gd","Pr","L", "L", "Pr","Gd","Gd","Bl"],
+        ["M", "Gl","Bk","Bk","Bk","Bk","Bk","Bk","Gl","M" ],
+        ["R", "Pf","Pf","Bl","Bl","Bl","Bl","Pf","Pf","R" ],
+        ["R", "Bl","Y", "Pk","Lv","Lv","Pk","Y", "Bl","R" ]
+    ],
+    "info": {
+        "creator": "Lixiru",
+        "found": "?",
+        "verified": "?"
+    }
+}

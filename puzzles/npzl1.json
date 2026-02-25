@@ -2,12 +2,12 @@
     "cols": 5,
     "rows": 5,
     "max_vertices": 5,
-    "goal": "11 1/20",
+    "goal": "12 1/4",
     "grid": [
         ["W", "Bl","L", "Bk","W" ],
         ["Bk","C", "W", "W", "Bl"],
-        ["R", "C", "Gl","W", "R" ],
-        ["Bl","W", "W", "Bl","Bk"],
+        ["R", "C", "W", "Gl","W" ],
+        ["Bl","Gl","W", "Bl","Bk"],
         ["W", "Bk","Bl","Gd","Bl"]
     ],
     "info": {

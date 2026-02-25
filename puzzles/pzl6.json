@@ -1,0 +1,17 @@
+{
+    "cols": 12,
+    "rows": 4,
+    "max_vertices": 10,
+    "goal": "24 1/2",
+    "grid": [
+        ["R" ,"W" ,"W" ,"W" ,"L" ,"R" ,"R" ,"W" ,"W" ,"Bk","W" ,"W" ],
+        ["W" ,"W" ,"W" ,"C" ,"W" ,"Bk","W" ,"W" ,"L" ,"W" ,"T" ,"T" ],
+        ["W" ,"T" ,"W" ,"G" ,"W" ,"W" ,"W" ,"R" ,"R" ,"W" ,"W" ,"T" ],
+        ["Bk","W" ,"W" ,"W" ,"W" ,"W" ,"W" ,"W" ,"W", "L" ,"Bk","Bk"]
+    ],
+    "info": {
+        "creator": "Big Berry",
+        "found": "?",
+        "verified": "?"
+    }
+}
