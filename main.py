@@ -1048,7 +1048,7 @@ class PolygonGame(tk.Tk):
             self.lbl_score.config(text="Invalid polygon", fg="red")
         elif (not validate_polygon(self.current_vertices)) if self.polygon_mode == "R" else (not special_validate_polygon(self.current_vertices)):
             self.lbl_score.config(text="Disallowed polygon", fg="red")
-        elif self.banned_edges and any(v in self.banned_vertices for v in self.current_vertices):
+        elif self.banned_vertices and any(v in self.banned_vertices for v in self.current_vertices):
             self.lbl_score.config(text="Polygon uses banned vertex", fg="red")
         elif self.cell_with_vertex_req and not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
             self.lbl_score.config(text="Polygon misses required vertex", fg="red")
