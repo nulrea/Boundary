@@ -1,0 +1,21 @@
+{
+    "cols": 5,
+    "rows": 7,
+    "max_vertices": 5,
+    "goal": "9 1/15",
+    "grid": [
+        ["Bk","R", "W", "Bk","Bk"],
+        ["Bk","W", "W", "Bl","W" ],
+        ["W" ,"W", "W", "Bk","Bl"],
+        ["W" ,"O", "Bk","Bk","Gl"],
+        ["W" ,"W", "W", "Bk","Bl"],
+        ["Bk","W", "W", "Bl","W" ],
+        ["Bk","R", "W", "Bk","Bk"]
+    ],
+    "polygon_mode": "B",
+    "info": {
+        "creator": "Lixiru",
+        "found": "?",
+        "verified": "?"
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "cols": 10,
+    "rows": 10,
+    "max_vertices": 8,
+    "goal": "0",
+    "grid": [
+        ["Bk","Bk","Bk","R" ,"R", "R", "W", "Bk","Bk","Bk"],
+        ["R" ,"R", "Bk","Bk","C", "W", "W", "W" ,"R", "Bk"],
+        ["W" ,"R", "W", "L" ,"W", "W", "W", "W" ,"W", "W" ],
+        ["W" ,"W", "W", "W" ,"W", "R", "W", "W" ,"C", "R" ],
+        ["W" ,"Bk","W", "W" ,"W", "Bk","W", "W" ,"Bk","Bk"],
+        ["W" ,"W", "Bk","W" ,"W", "W", "W", "W" ,"W", "W" ],
+        ["R" ,"W", "W", "W" ,"W", "G", "W", "R" ,"Bl","W" ],
+        ["Bk","W", "C", "W" ,"W", "W", "W", "Bk","W", "W" ],
+        ["Bk","W", "W", "R" ,"W", "W", "W", "W" ,"Bk","W" ],
+        ["Bk","Bk","R", "Bk","Bk","W", "R", "Bk","Bk","W" ]
+    ],
+    "polygon_mode": "R",
+    "info": {
+        "creator": "Big Berry",
+        "found": "?",
+        "verified": "?"
+    }
+}

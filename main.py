@@ -43,7 +43,7 @@ class Cell(ABC):
 class BasicCell(Cell):
     @property
     def document(self):
-        return "A basic cell. Gives points based on how much the area covering this cell."
+        return "(0, x, 1) A basic cell. Gives points based on how much the area covering this cell."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage
@@ -51,7 +51,7 @@ class BasicCell(Cell):
 class WallCell(Cell):
     @property
     def document(self):
-        return "The shape may not include this cell."
+        return "(0, -, -) The shape may not include this cell."
 
     def result(self, coverage: Fraction) -> Fraction:
         return very_negative if coverage > 0 else Fraction(0)
@@ -59,7 +59,7 @@ class WallCell(Cell):
 class CaptureCell(Cell):
     @property
     def document(self):
-        return "A cell that must be included (even a part of it) to make the answer valid."
+        return "(-, x, 1) A cell that must be included (even a part of it) to make the answer valid."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if coverage > 0 else very_negative
@@ -67,7 +67,7 @@ class CaptureCell(Cell):
 class StrictCaptureCell(Cell):
     @property
     def document(self):
-        return "A cell that must be totally included to make the answer valid."
+        return "(-, -, 1) A cell that must be totally included to make the answer valid."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if coverage >= 1 else very_negative
@@ -75,7 +75,7 @@ class StrictCaptureCell(Cell):
 class ExclusiveCaptureCell(Cell):
     @property
     def document(self):
-        return "A cell that must be partially but not fully included to make the answer valid."
+        return "(-, x, -) A cell that must be partially but not fully included to make the answer valid."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if 0 < coverage < 1 else very_negative
@@ -83,7 +83,7 @@ class ExclusiveCaptureCell(Cell):
 class MetalCell(Cell):
     @property
     def document(self):
-        return "A cell that must be in whole to be valid."
+        return "(0, -, 1) A cell that must be in whole to be valid."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if not (0 < coverage < 1) else very_negative
@@ -91,7 +91,7 @@ class MetalCell(Cell):
 class GlassCell(Cell):
     @property
     def document(self):
-        return "A cell that must not be totally included to be valid."
+        return "(0, x, -) A cell that must not be totally included to be valid."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if coverage < 1 else very_negative
@@ -99,7 +99,7 @@ class GlassCell(Cell):
 class MineCell(Cell):
     @property
     def document(self):
-        return "Deduct an immediate -1 if the shape ever so slightly touches this. Does not score any points."
+        return "(0, -1, -1) Deduct an immediate -1 if the shape ever so slightly touches this. Does not score any points."
 
     def result(self, coverage: Fraction) -> Fraction:
         return Fraction(-1) if coverage > 0 else Fraction(0)
@@ -107,7 +107,7 @@ class MineCell(Cell):
 class HoleCell(Cell):
     @property
     def document(self):
-        return "A cell that does nothing, even scoring."
+        return "(0, 0, 0) A cell that does nothing, even scoring."
 
     def result(self, coverage: Fraction) -> Fraction:
         return Fraction(0)
@@ -115,7 +115,7 @@ class HoleCell(Cell):
 class GemCell(Cell):
     @property
     def document(self):
-        return "A cell that gives an extra 1 point if touched."
+        return "(0, x+1, 2) A cell that gives an extra 1 point if touched."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage + 1 if coverage > 0 else Fraction(0)
@@ -123,7 +123,7 @@ class GemCell(Cell):
 class NoVertexCell(Cell):  # special cell
     @property
     def document(self):
-        return "No vertices can be placed on this tile."
+        return "(0, x, 1) No vertices can be placed on this tile."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage
@@ -131,7 +131,7 @@ class NoVertexCell(Cell):  # special cell
 class ForcedVertexCell(Cell):  # special cell
     @property
     def document(self):
-        return "At least 1 vertex must be placed on this tile."
+        return "(-, x, 1) At least 1 vertex must be placed on this tile."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if coverage > 0 else very_negative
@@ -139,7 +139,7 @@ class ForcedVertexCell(Cell):  # special cell
 class NoEdgeCell(Cell):  # special cell
     @property
     def document(self):
-        return "No lines can cover any edges on this tile."
+        return "(0, 0, 0) No lines can cover any edges on this tile."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage
@@ -147,7 +147,7 @@ class NoEdgeCell(Cell):  # special cell
 class ForcedEdgeCell(Cell):  # special cell
     @property
     def document(self):
-        return "At least 1 edge of this tile must be covered by the polygon."
+        return "(-, x, 1) At least 1 edge of this tile must be covered by the polygon."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage if coverage > 0 else very_negative
@@ -155,7 +155,7 @@ class ForcedEdgeCell(Cell):  # special cell
 class NegativeCell(Cell):
     @property
     def document(self):
-        return "Loses points as more area are covered."
+        return "(0, -x, -1) Loses points as more area are covered."
 
     def result(self, coverage: Fraction) -> Fraction:
         return - coverage
@@ -163,7 +163,7 @@ class NegativeCell(Cell):
 class DoubleCell(Cell):
     @property
     def document(self):
-        return "A cell that gives double the points that a normal cell would."
+        return "(0, 2x, 1) A cell that gives double the points that a normal cell would."
 
     def result(self, coverage: Fraction) -> Fraction:
         return coverage * 2
@@ -171,7 +171,7 @@ class DoubleCell(Cell):
 class TrapCell(Cell):
     @property
     def document(self):
-        return "A cell that gives -1 point if touched. Scoring is possible however."
+        return "(0, x-1, 0) A cell that gives -1 point if touched. Scoring is possible however."
     
     def result(self, coverage: Fraction) -> Fraction:
         return coverage - 1 if coverage > 0 else Fraction(0)
@@ -179,7 +179,7 @@ class TrapCell(Cell):
 class BonusCell(Cell):
     @property
     def document(self):
-        return "Gives 1 point regardless but it has to be touched."
+        return "(0, 1, 1) Gives 1 point regardless but it has to be touched."
 
     def result(self, coverage: Fraction) -> Fraction:
         return Fraction(0) if coverage == 0 else Fraction(1)
@@ -819,6 +819,10 @@ class PolygonGame(tk.Tk):
         self.cols: int = data['cols']
         self.rows: int = data['rows']
         self.max_v: int = data['max_vertices']
+        self.cell_with_vertex_req.clear()
+        self.banned_vertices.clear()
+        self.cell_with_edge_req.clear()
+        self.banned_edges.clear()
         
         # Create Cell Objects
         self.cell_instances = []
@@ -839,6 +843,9 @@ class PolygonGame(tk.Tk):
                     self.cell_with_vertex_req.add(coord)
                 if isinstance(cell_obj, NoVertexCell):
                     self.banned_vertices.add(coord)
+                    self.banned_vertices.add(bl)
+                    self.banned_vertices.add(tr)
+                    self.banned_vertices.add(tl)
                 if isinstance(cell_obj, ForcedEdgeCell):
                     self.cell_with_edge_req.add(coord)
                 if isinstance(cell_obj, NoEdgeCell):
@@ -1028,7 +1035,7 @@ class PolygonGame(tk.Tk):
             faces = split_polygon(self.current_vertices)
             print(f"Polygon split into {len(faces)} face(s).")
             for face in faces:
-                print([(int(x), int(y)) for x, y in face])
+                print([f"({x})/({y})" for x, y in face])
             for r in range(self.rows):
                 for c in range(self.cols):
                     total_score += (d := self.cell_instances[r][c].result(custom_sum(calculate_cell_coverage(Fraction(c), Fraction(r), face) for face in faces)))
@@ -1041,18 +1048,18 @@ class PolygonGame(tk.Tk):
             self.lbl_score.config(text="Invalid polygon", fg="red")
         elif (not validate_polygon(self.current_vertices)) if self.polygon_mode == "R" else (not special_validate_polygon(self.current_vertices)):
             self.lbl_score.config(text="Disallowed polygon", fg="red")
-        elif any(v in self.banned_vertices for v in self.current_vertices):
+        elif self.banned_edges and any(v in self.banned_vertices for v in self.current_vertices):
             self.lbl_score.config(text="Polygon uses banned vertex", fg="red")
-        elif not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
+        elif self.cell_with_vertex_req and not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
             self.lbl_score.config(text="Polygon misses required vertex", fg="red")
         elif self.banned_edges and all(not check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],*tuple(edge))for i in range(len(self.current_vertices))for edge in self.banned_edges):
             self.lbl_score.config(text="Polygon uses banned edge", fg="red")
         elif self.cell_with_edge_req and not all(any(check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],edge[0],edge[1])for i in range(len(self.current_vertices))for edge in cell_to_edges(cell))for cell in self.cell_with_edge_req):
             self.lbl_score.config(text="Polygon misses required edge", fg="red")
         else:
+            fg = "green" if total_score >= self.goal else "black"
             total_score = total_score if self.is10x_mode.get() else total_score * 10
             final_val = float(total_score)
-            fg = "green" if total_score >= self.goal else "black"
             if total_score.denominator == 1:
                 self.lbl_score.config(text=f"Score: {total_score.numerator} ({str(total_score) + ' or ' if total_score.numerator == 0 else ''}{final_val})", fg=fg)
             elif 0 <= total_score.numerator < total_score.denominator:
@@ -1090,6 +1097,7 @@ class PolygonGame(tk.Tk):
             if i % 1000 == 0:
                 print(f"{i}/{num_of_combinations}", end="\r")
         print(f"Best score found: {best_score} with {len(bests)} solution(s).")
+        self.calculate_score()
 
 if __name__ == "__main__":
     app = PolygonGame()

@@ -1,0 +1,19 @@
+{
+    "cols": 7,
+    "rows": 5,
+    "max_vertices": 9,
+    "goal": "9 1/8",
+    "grid": [
+        ["C", "W", "Bl","Gd","W" ,"W", "Bl"],
+        ["W", "W", "Bk","W" ,"R" ,"W", "W" ],
+        ["W", "W", "R" ,"R" ,"W" ,"W", "T" ],
+        ["W", "Y", "T" ,"Bk","Gd","C", "W" ],
+        ["W", "W", "Bl","R" ,"W" ,"W", "R" ]
+    ],
+    "polygon_mode": "R",
+    "info": {
+        "creator": "The_upgrater",
+        "found": "?",
+        "verified": "?"
+    }
+}
