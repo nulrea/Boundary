@@ -1,0 +1,17 @@
+{
+    "cols": 3,
+    "rows": 3,
+    "max_vertices": 4,
+    "goal": "0",
+    "grid": [
+        ["W", "Bk","W" ],
+        ["W", "W", "W" ],
+        ["W", "Bk","W" ]
+    ],
+    "polygon_mode": "B",
+    "info": {
+        "creator": "?",
+        "found": "?",
+        "verified": "?"
+    }
+}

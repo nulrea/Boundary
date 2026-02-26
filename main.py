@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import json
@@ -232,6 +232,13 @@ converter: dict[str, str] = {
     "G": "Bl"
 }
 inverted_converter: dict[str, str] = {v: k for k, v in converter.items()}
+
+def custom_sum(lst: Generator[Fraction]) -> Fraction:
+    """Custom sum function to avoid floating point issues."""
+    total = Fraction(0, 1)
+    for num in lst:
+        total += num
+    return total
 
 def str_to_board(board_str: str, _type: Literal["basic"] = "basic") -> dict:
     """Converts a string representation of the board into a 2D list."""
@@ -578,6 +585,10 @@ def split_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> list[Sequence
     n = len(pts)
     if n < 3:
         return []
+    
+    # For non-intersecting polygons, just return the polygon as-is
+    if validate_polygon(pts):
+        return [pts]
 
     edges = [(pts[i], pts[(i + 1) % n]) for i in range(n)]
 
@@ -758,7 +769,7 @@ class PolygonGame(tk.Tk):
         self.status_frame = tk.Frame(self, bd=1, relief=tk.SUNKEN)
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.x10 = tk.Checkbutton(self.status_frame, text="Don't multiply by 10", variable=self.is10x_mode)
+        self.x10 = tk.Checkbutton(self.status_frame, text="Don't multiply by 10", variable=self.is10x_mode, command=lambda: self.calculate_score())
         self.x10.pack(side=tk.LEFT, padx=10)
         
         self.lbl_score = tk.Label(self.status_frame, text="Score: 0", font=("Arial", 12, "bold"))
@@ -776,19 +787,19 @@ class PolygonGame(tk.Tk):
     def create_dummy_board(self) -> None:
         """Creates an in-memory default board if no file is loaded."""
         data: dict = {
-            "cols": 5,
+            "cols": 12,
             "rows": 5,
-            "max_vertices": 3,
-            "goal": "4 1/2",
+            "max_vertices": 6,
+            "goal": "0",
             "grid": [
-                ["Bk","Bk","W", "Bk","W" ],
-                ["Bk","W", "W", "Bk","Bk"],
-                ["W", "W", "W", "W", "W" ],
-                ["Bk","Bk","W", "Bk","Bk"],
-                ["W", "Bk","W", "Bk","Bk"]
+                ["W", "Bk","W", "W", "Bk","W", "W", "Bk","W", "W", "Bk","W" ],
+                ["W", "W", "W", "W", "W", "W", "W", "W", "W", "W", "W", "W" ],
+                ["Bk","W", "Bl","Gd","C", "Gl","G", "T", "R", "L", "W", "Bk"],
+                ["W", "W", "W", "W", "W", "W", "W", "W", "W", "W", "W", "W" ],
+                ["W", "Bk","W", "W", "Bk","W", "W", "Bk","W", "W", "Bk","W" ]
             ],
             "info": {
-                "creator": "The_upgrater",
+                "creator": "Big Berry",
                 "found": "-",
                 "verified": "-"
             }
@@ -846,6 +857,7 @@ class PolygonGame(tk.Tk):
             self.polygon_mode = data['polygon_mode']
         else:
             self.polygon_mode = "R"
+        print(f"Loaded board: {self.cols} cols, {self.rows} rows, max {self.max_v} vertices, goal {self.goal}, polygon mode {self.polygon_mode}")
         self.draw_board()
         self.update_status()
 
@@ -917,13 +929,13 @@ class PolygonGame(tk.Tk):
 
         # Draw edges
         if len(screen_points) > 1:
-            self.canvas.create_line(screen_points, fill="red", width=3, tags="poly_layer")
+            self.canvas.create_line(screen_points, fill="#FF0000"if self.polygon_mode == "R" else"#0000FF", width=3, tags="poly_layer")
             # Close the loop visually if we have enough points
             if len(screen_points) >= 3:
-                self.canvas.create_line(screen_points[-1], screen_points[0], fill="red", width=3, tags="poly_layer")
+                self.canvas.create_line(screen_points[-1], screen_points[0], fill="#FF0000"if self.polygon_mode == "R" else"#0000FF", width=3, tags="poly_layer")
         
         if len(screen_points) >= 3:
-            self.canvas.create_polygon(screen_points, fill="#FF0000", stipple="gray25", tags="poly_layer")
+            self.canvas.create_polygon(screen_points, fill="#FF0000"if self.polygon_mode == "R" else"#0000FF", stipple="gray25", tags="poly_layer")
 
         for px, py in screen_points:
             self.canvas.create_oval(px-5, py-5, px+5, py+5, fill="yellow", tags="poly_layer")
@@ -1014,11 +1026,16 @@ class PolygonGame(tk.Tk):
                     total_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), self.current_vertices))
         elif self.polygon_mode == "B":
             faces = split_polygon(self.current_vertices)
+            print(f"Polygon split into {len(faces)} face(s).")
             for face in faces:
-                face_score = Fraction(0, 1)
-                for r in range(self.rows):
-                    for c in range(self.cols):
-                        face_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), face))
+                print([(int(x), int(y)) for x, y in face])
+            for r in range(self.rows):
+                for c in range(self.cols):
+                    total_score += (d := self.cell_instances[r][c].result(custom_sum(calculate_cell_coverage(Fraction(c), Fraction(r), face) for face in faces)))
+                    print(d)
+                    if d < threshold:
+                        print(f"({c}, {r})")
+        print(f"Calculated score: {total_score}, threshold: {threshold}")
         
         if total_score < threshold:
             self.lbl_score.config(text="Invalid polygon", fg="red")
@@ -1028,21 +1045,9 @@ class PolygonGame(tk.Tk):
             self.lbl_score.config(text="Polygon uses banned vertex", fg="red")
         elif not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
             self.lbl_score.config(text="Polygon misses required vertex", fg="red")
-        elif any(frozenset({edge[0], edge[1]}) in self.banned_edges for edge in zip(self.current_vertices, self.current_vertices[1:] + [self.current_vertices[0]])):
+        elif self.banned_edges and all(not check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],*tuple(edge))for i in range(len(self.current_vertices))for edge in self.banned_edges):
             self.lbl_score.config(text="Polygon uses banned edge", fg="red")
-        elif not all(
-            any(
-                check_collinear_overlap(
-                    self.current_vertices[i],
-                    self.current_vertices[(i+1) % len(self.current_vertices)],
-                    edge[0],
-                    edge[1]
-                )
-                for i in range(len(self.current_vertices))
-                for edge in cell_to_edges(cell)
-            )
-            for cell in self.cell_with_edge_req
-        ):
+        elif self.cell_with_edge_req and not all(any(check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],edge[0],edge[1])for i in range(len(self.current_vertices))for edge in cell_to_edges(cell))for cell in self.cell_with_edge_req):
             self.lbl_score.config(text="Polygon misses required edge", fg="red")
         else:
             total_score = total_score if self.is10x_mode.get() else total_score * 10
@@ -1076,6 +1081,8 @@ class PolygonGame(tk.Tk):
                         best_score = score
                         bests = [list(perm)]
                         print(f"New best score: {best_score} with vertices {[(x.numerator, y.numerator) for x, y in perm]}")
+                        self.current_vertices = list(perm)
+                        self.draw_polygon()
                     elif score == best_score:
                         bests.append(list(perm))
                         print(f"Found another solution with score {best_score}: {[(x.numerator, y.numerator) for x, y in perm]}")
