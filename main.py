@@ -324,7 +324,14 @@ def get_unique_structures(elements: Sequence[tuple[Fraction, Fraction]]) -> list
     return unique_list
 
 def cell_to_vertices(cell: tuple[Fraction, Fraction]) -> list[tuple[Fraction, Fraction]]:
-    return [(cell[0], cell[1]), (cell[0]+1, cell[1]), (cell[0], cell[1]+1), (cell[0]+1, cell[1]+1)]
+    # Return vertices in clockwise order: bottom-left, bottom-right, top-right, top-left
+    c, r = cell
+    return [
+        (c, r),
+        (c + 1, r),
+        (c + 1, r + 1),
+        (c, r + 1)
+    ]
 
 def cell_to_edges(cell: tuple[Fraction, Fraction]) -> list[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]]:
     vertices = cell_to_vertices(cell)
@@ -332,6 +339,125 @@ def cell_to_edges(cell: tuple[Fraction, Fraction]) -> list[tuple[tuple[Fraction,
     for i in range(4):
         edges.append((vertices[i], vertices[(i+1)%4]))
     return edges
+
+def is_vertex_in_cell(vertex: tuple[Fraction, Fraction], cell: tuple[Fraction, Fraction]) -> bool:
+    """Check if a polygon vertex is inside or on the boundary of a cell."""
+    c, r = cell
+    vx, vy = vertex
+    return c <= vx <= c + 1 and r <= vy <= r + 1
+
+def is_edge_horizontal(edge: tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]) -> bool:
+    """Check if an edge is horizontal."""
+    p1, p2 = edge
+    return p1[1] == p2[1]
+
+def is_edge_vertical(edge: tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]) -> bool:
+    """Check if an edge is vertical."""
+    p1, p2 = edge
+    return p1[0] == p2[0]
+
+def axis_aligned_overlap(p1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction],
+                         q1: tuple[Fraction, Fraction], q2: tuple[Fraction, Fraction]) -> bool:
+    """Check overlap for axis-aligned segments (horizontal or vertical).
+
+    Returns True if the segments are collinear along an axis and their projections overlap
+    by a positive length (not just a point touch).
+    """
+    # Horizontal case
+    if p1[1] == p2[1] and q1[1] == q2[1] and p1[1] == q1[1]:
+        a1, a2 = sorted([p1[0], p2[0]])
+        b1, b2 = sorted([q1[0], q2[0]])
+        return min(a2, b2) > max(a1, b1)
+
+    # Vertical case
+    if p1[0] == p2[0] and q1[0] == q2[0] and p1[0] == q1[0]:
+        a1, a2 = sorted([p1[1], p2[1]])
+        b1, b2 = sorted([q1[1], q2[1]])
+        return min(a2, b2) > max(a1, b1)
+
+    return False
+
+def get_invalid_cells(current_vertices: Sequence[tuple[Fraction, Fraction]], 
+                      cell_with_vertex_ban: set[tuple[Fraction, Fraction]],
+                      cell_with_vertex_req: set[tuple[Fraction, Fraction]],
+                      cell_with_edge_ban: set[tuple[Fraction, Fraction]],
+                      cell_with_edge_req: set[tuple[Fraction, Fraction]]) -> set[tuple[Fraction, Fraction]]:
+    """
+    Check all special cell constraints and return set of invalid cells.
+    
+    1. Vertex ban: invalidates if contains any vertices
+    2. Vertex req: invalidates if contains no vertices
+    3. Edge ban: invalidates if any edge overlaps with polygon edge (horizontal/vertical only)
+    4. Edge req: invalidates if no edges overlap (both horizontal AND vertical must have at least one overlap)
+    """
+    invalid_cells: set[tuple[Fraction, Fraction]] = set()
+    
+    if len(current_vertices) < 3:
+        return invalid_cells
+    
+    # Build polygon edges
+    polygon_edges = []
+    for i in range(len(current_vertices)):
+        p1 = current_vertices[i]
+        p2 = current_vertices[(i + 1) % len(current_vertices)]
+        polygon_edges.append((p1, p2))
+    
+    # Check vertex ban cells
+    for cell in cell_with_vertex_ban:
+        for vertex in current_vertices:
+            if is_vertex_in_cell(vertex, cell):
+                invalid_cells.add(cell)
+                break
+    
+    # Check vertex req cells
+    for cell in cell_with_vertex_req:
+        has_vertex = False
+        for vertex in current_vertices:
+            if is_vertex_in_cell(vertex, cell):
+                has_vertex = True
+                break
+        if not has_vertex:
+            invalid_cells.add(cell)
+    
+    # Check edge ban cells
+    for cell in cell_with_edge_ban:
+        cell_edges = cell_to_edges(cell)
+        for cell_edge in cell_edges:
+            for poly_edge in polygon_edges:
+                # Only check axis-aligned overlaps for edge ban
+                # (avoid false positives from check_collinear_overlap)
+                if axis_aligned_overlap(poly_edge[0], poly_edge[1], cell_edge[0], cell_edge[1]):
+                    invalid_cells.add(cell)
+                    break
+            if cell in invalid_cells:
+                break
+    
+    # Check edge req cells - only check horizontal and vertical edges
+    for cell in cell_with_edge_req:
+        cell_edges = cell_to_edges(cell)
+        horizontal_overlap = False
+        vertical_overlap = False
+        
+        for cell_edge in cell_edges:
+            if not (is_edge_horizontal(cell_edge) or is_edge_vertical(cell_edge)):
+                continue
+            
+            for poly_edge in polygon_edges:
+                if not (is_edge_horizontal(poly_edge) or is_edge_vertical(poly_edge)):
+                    continue
+                # Only use axis-aligned overlap for edge req
+                # (avoid false positives from check_collinear_overlap)
+                if axis_aligned_overlap(poly_edge[0], poly_edge[1], cell_edge[0], cell_edge[1]):
+                    if is_edge_horizontal(cell_edge):
+                        horizontal_overlap = True
+                    elif is_edge_vertical(cell_edge):
+                        vertical_overlap = True
+        
+        # Invalidate only if both horizontal and vertical checks fail
+        if not horizontal_overlap and not vertical_overlap:
+            invalid_cells.add(cell)
+    
+    return invalid_cells
 
 # --- 2. Geometric Logic (Pure Python) ---
 
@@ -789,9 +915,9 @@ class PolygonGame(tk.Tk):
         self.image_cache_size: int = 0
         self.last_vertex: tuple[Fraction, Fraction] | None = None
         self.goal: Fraction = Fraction(0, 1)
-        self.banned_vertices: set[tuple[Fraction, Fraction]] = set()
+        self.cell_with_vertex_ban: set[tuple[Fraction, Fraction]] = set()
         self.cell_with_vertex_req: set[tuple[Fraction, Fraction]] = set()
-        self.banned_edges: set[frozenset[tuple[Fraction, Fraction]]] = set()
+        self.cell_with_edge_ban: set[tuple[Fraction, Fraction]] = set()
         self.cell_with_edge_req: set[tuple[Fraction, Fraction]] = set()
         self.polygon_mode: Literal["R", "B"] = "R"
         self.is10x_mode: tk.BooleanVar = tk.BooleanVar(value=False)
@@ -889,9 +1015,9 @@ class PolygonGame(tk.Tk):
         self.rows: int = data['rows']
         self.max_v: int = data['max_vertices']
         self.cell_with_vertex_req.clear()
-        self.banned_vertices.clear()
+        self.cell_with_vertex_ban.clear()
         self.cell_with_edge_req.clear()
-        self.banned_edges.clear()
+        self.cell_with_edge_ban.clear()
         
         # Create Cell Objects
         self.cell_instances = []
@@ -905,23 +1031,14 @@ class PolygonGame(tk.Tk):
                 row_list.append(cell_obj)
                 # Special cells
                 coord: tuple[Fraction, Fraction] = (Fraction(c), Fraction(r))
-                bl = (Fraction(c)+1, Fraction(r))
-                tr = (Fraction(c), Fraction(r)+1)
-                tl = (Fraction(c)+1, Fraction(r)+1)
                 if isinstance(cell_obj, ForcedVertexCell):
                     self.cell_with_vertex_req.add(coord)
                 if isinstance(cell_obj, NoVertexCell):
-                    self.banned_vertices.add(coord)
-                    self.banned_vertices.add(bl)
-                    self.banned_vertices.add(tr)
-                    self.banned_vertices.add(tl)
+                    self.cell_with_vertex_ban.add(coord)
                 if isinstance(cell_obj, ForcedEdgeCell):
                     self.cell_with_edge_req.add(coord)
                 if isinstance(cell_obj, NoEdgeCell):
-                    self.banned_edges.add(frozenset({coord, bl}))
-                    self.banned_edges.add(frozenset({coord, tr}))
-                    self.banned_edges.add(frozenset({bl, tl}))
-                    self.banned_edges.add(frozenset({tr, tl}))
+                    self.cell_with_edge_ban.add(coord)
             self.cell_instances.append(row_list)
             
         self.current_vertices = []
@@ -993,8 +1110,35 @@ class PolygonGame(tk.Tk):
         self.draw_polygon()
         self.canvas.update() # Ensure we have the latest dimensions
 
+    def draw_invalid_cells(self):
+        """Draw invalid cells based on special cell constraints."""
+        invalid_cells = get_invalid_cells(
+            self.current_vertices,
+            self.cell_with_vertex_ban,
+            self.cell_with_vertex_req,
+            self.cell_with_edge_ban,
+            self.cell_with_edge_req
+        )
+        
+        for cell_coord in invalid_cells:
+            c, r = cell_coord
+            x1 = self.offset_x + float(c) * self.cell_size
+            y1 = self.offset_y + float(r) * self.cell_size
+            x2 = x1 + self.cell_size
+            y2 = y1 + self.cell_size
+            
+            # Draw semi-transparent red overlay without edges
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2,
+                fill="red",
+                stipple="gray50",
+                outline="",
+                tags="invalid_layer"
+            )
+
     def draw_polygon(self):
         self.canvas.delete("poly_layer")
+        self.canvas.delete("invalid_layer")
         if not self.current_vertices: return
 
         screen_points: list[tuple[float, float]] = []
@@ -1002,6 +1146,9 @@ class PolygonGame(tk.Tk):
             px = float(self.offset_x + c * self.cell_size)
             py = float(self.offset_y + r * self.cell_size)
             screen_points.append((px, py))
+
+        # Draw invalid cells (below polygon but above cells)
+        self.draw_invalid_cells()
 
         # Draw edges
         if len(screen_points) > 1:
@@ -1095,6 +1242,31 @@ class PolygonGame(tk.Tk):
             return
         
         total_score = Fraction(0, 1)
+        
+        # Highlight invalid cells and flush the result
+        invalid_cells = get_invalid_cells(
+            self.current_vertices,
+            self.cell_with_vertex_ban,
+            self.cell_with_vertex_req,
+            self.cell_with_edge_ban,
+            self.cell_with_edge_req
+        )
+        if invalid_cells:
+            for cell_coord in invalid_cells:
+                c, r = cell_coord
+                x1 = self.offset_x + float(c) * self.cell_size
+                y1 = self.offset_y + float(r) * self.cell_size
+                x2 = x1 + self.cell_size
+                y2 = y1 + self.cell_size
+                
+                self.canvas.create_rectangle(
+                    x1, y1, x2, y2,
+                    fill="red",
+                    stipple="gray50",
+                    outline="",
+                    tags="invalid_layer"
+                )
+            self.canvas.update()
 
         if self.polygon_mode == "R":
             for r in range(self.rows):
@@ -1109,35 +1281,52 @@ class PolygonGame(tk.Tk):
             for r in range(self.rows):
                 for c in range(self.cols):
                     total_score += (d := self.cell_instances[r][c].result(custom_sum(calculate_cell_coverage(Fraction(c), Fraction(r), face) for face in faces)))
-                    print(d)
                     if d < threshold:
-                        print(f"({c}, {r})")
-        print(f"Calculated score: {total_score}, threshold: {threshold}")
+                        invalid_cells.add((Fraction(c), Fraction(r)))
         
+        # Check for violations using invalid_cells and other validations
+        error_reason = None
+
         if total_score < threshold:
-            self.lbl_score.config(text="Invalid polygon", fg="red")
+            error_reason = "Invalid polygon"
         elif (not validate_polygon(self.current_vertices)) if self.polygon_mode == "R" else (not special_validate_polygon(self.current_vertices)):
-            self.lbl_score.config(text="Disallowed polygon", fg="red")
-        elif self.banned_vertices and any(v in self.banned_vertices for v in self.current_vertices):
-            self.lbl_score.config(text="Polygon uses banned vertex", fg="red")
-        elif self.cell_with_vertex_req and not all(any(element in self.current_vertices for element in sublist) for sublist in map(cell_to_vertices, self.cell_with_vertex_req)):
-            self.lbl_score.config(text="Polygon misses required vertex", fg="red")
-        elif self.banned_edges and all(not check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],*tuple(edge))for i in range(len(self.current_vertices))for edge in self.banned_edges):
-            self.lbl_score.config(text="Polygon uses banned edge", fg="red")
-        elif self.cell_with_edge_req and not all(any(check_collinear_overlap(self.current_vertices[i],self.current_vertices[(i+1) % len(self.current_vertices)],edge[0],edge[1])for i in range(len(self.current_vertices))for edge in cell_to_edges(cell))for cell in self.cell_with_edge_req):
-            self.lbl_score.config(text="Polygon misses required edge", fg="red")
+            error_reason = "Disallowed polygon"
+        else:
+            # Prioritize specific special-cell violations discovered earlier
+            if invalid_cells:
+                if any(cell in self.cell_with_vertex_ban for cell in invalid_cells):
+                    error_reason = "Polygon uses banned vertex"
+                elif any(cell in self.cell_with_edge_ban for cell in invalid_cells):
+                    error_reason = "Polygon uses banned edge"
+                elif any(cell in self.cell_with_vertex_req for cell in invalid_cells):
+                    error_reason = "Polygon misses required vertex"
+                elif any(cell in self.cell_with_edge_req for cell in invalid_cells):
+                    error_reason = "Polygon misses required edge"
+                else:
+                    error_reason = "Special cell rule violated"
+
+        # Format score string
+        display_score = total_score if self.is10x_mode.get() else total_score * 10
+        final_val = float(display_score)
+        
+        if display_score.denominator == 1:
+            score_str = f"Score: {display_score.numerator} ({str(display_score) + ' or ' if display_score.numerator == 0 else ''}{final_val})"
+        elif 0 <= display_score.numerator < display_score.denominator:
+            score_str = f"Score: {display_score} ({final_val})"
+        elif display_score.numerator < 0:
+            score_str = f"Score: {display_score} ({final_val})"
+        else:
+            score_str = f"Score: {int(display_score)} {display_score.numerator % display_score.denominator}/{display_score.denominator} ({str(display_score) + ' or ' if int(display_score) == 0 else ''}{final_val})"
+        
+        # Display result
+        if error_reason:
+            if total_score >= threshold:
+                self.lbl_score.config(text=f"{score_str} - {error_reason}", fg="red")
+            else:
+                self.lbl_score.config(text=error_reason, fg="red")
         else:
             fg = "green" if total_score >= self.goal else "black"
-            total_score = total_score if self.is10x_mode.get() else total_score * 10
-            final_val = float(total_score)
-            if total_score.denominator == 1:
-                self.lbl_score.config(text=f"Score: {total_score.numerator} ({str(total_score) + ' or ' if total_score.numerator == 0 else ''}{final_val})", fg=fg)
-            elif 0 <= total_score.numerator < total_score.denominator:
-                self.lbl_score.config(text=f"Score: {total_score} ({final_val})", fg=fg)
-            elif total_score.numerator < 0:
-                self.lbl_score.config(text=f"Score: {total_score} ({final_val})", fg=fg)
-            else:
-                self.lbl_score.config(text=f"Score: {int(total_score)} {total_score.numerator % total_score.denominator}/{total_score.denominator} ({str(total_score) + ' or ' if int(total_score) == 0 else ''}{final_val})", fg=fg)
+            self.lbl_score.config(text=score_str, fg=fg)
     
     def find_solution(self):
         possible_points: list[tuple[Fraction, Fraction]] = [(Fraction(c), Fraction(r)) for r in range(self.rows + 1) for c in range(self.cols + 1)]
