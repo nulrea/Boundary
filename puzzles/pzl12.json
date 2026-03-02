@@ -1,0 +1,19 @@
+{
+    "cols": 9,
+    "rows": 5,
+    "max_vertices": 5,
+    "goal": "11",
+    "grid": [
+        ["L", "W", "W" ,"W", "W", "W", "W", "W", "W"],
+        ["W", "Bk","W" ,"Bk","W", "W", "W", "Bk","W"],
+        ["W", "W", "W" ,"C", "Bk","W", "W", "W", "W"],
+        ["W", "W", "R" ,"W", "W", "Bk","W", "R", "T"],
+        ["W", "W", "Bk","W", "Bl","W", "Bk","W", "W"]
+    ],
+    "polygon_mode": "R",
+    "info": {
+        "creator": "nmk",
+        "found": "Electrino",
+        "verified": "?"
+    }
+}

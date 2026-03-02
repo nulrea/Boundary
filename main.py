@@ -6,9 +6,7 @@ import json
 import math
 from fractions import Fraction
 from abc import ABC, abstractmethod
-import os
-from turtle import width
-from typing import Callable, Literal
+from typing import Literal
 from itertools import combinations, permutations
 
 # --- 0. Constants or at least Loose Constants ---
@@ -461,12 +459,6 @@ def half_plane(x: Fraction, y: Fraction) -> bool:
     """idk"""
     return (y > 0) or (y == 0 and x > 0)
 
-def compare_angles(center: tuple[Fraction, Fraction]) -> Callable[[tuple[Fraction, Fraction]], tuple[int, Fraction]]:
-    def key(point: tuple[Fraction, Fraction]) -> tuple[int, Fraction]:
-        vec = (point[0] - center[0], point[1] - center[1])
-        return (0 if half_plane(*vec) else 1, vec[1] / vec[0] if vec[0] != 0 else Fraction('inf'))
-    return key
-
 def validate_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
     n = len(polygon)
     if n < 3:
@@ -539,19 +531,6 @@ def _cross(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> Fracti
     """2D cross product of vectors a and b."""
     return a[0] * b[1] - a[1] * b[0]
 
-def _sort_along_edge(p1: tuple[Fraction, Fraction], p2: tuple[Fraction, Fraction], pts: set[tuple[Fraction, Fraction]]):
-    """Return pts sorted by their parametric position along the segment p1-p2."""
-    dx = p2[0] - p1[0]
-    dy = p2[1] - p1[1]
-
-    def param(pt: tuple[Fraction, Fraction]) -> Fraction:
-        if abs(dx) >= abs(dy):
-            return (pt[0] - p1[0]) / dx if dx != 0 else Fraction(0)
-        else:
-            return (pt[1] - p1[1]) / dy if dy != 0 else Fraction(0)
-
-    return sorted(pts, key=param)
-
 def _angle(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> float:
     """Return angle of vector a->b for CCW sorting."""
     dx = float(b[0] - a[0])
@@ -565,6 +544,174 @@ def _polygon_area(poly: Sequence[tuple[Fraction, Fraction]]) -> Fraction:
         x2, y2 = poly[(i + 1) % len(poly)]
         s += x1 * y2 - x2 * y1
     return s / 2
+
+def _signed_polygon_area(poly: Sequence[tuple[Fraction, Fraction]]) -> Fraction:
+    """Return signed area (positive if CCW)."""
+    area = Fraction(0)
+    for i in range(len(poly)):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % len(poly)]
+        area += x1 * y2 - x2 * y1
+    return area / 2
+
+def _dot(a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction]) -> Fraction:
+    """Dot product of vectors a and b."""
+    return a[0] * b[0] + a[1] * b[1]
+
+def _is_convex(prev: tuple[Fraction, Fraction], curr: tuple[Fraction, Fraction], nxt: tuple[Fraction, Fraction]) -> bool:
+    """Check if turn at curr is convex (CCW)."""
+    return _cross(_vec_sub(curr, prev), _vec_sub(nxt, curr)) > 0
+
+def _point_in_triangle(p: tuple[Fraction, Fraction], a: tuple[Fraction, Fraction], b: tuple[Fraction, Fraction], c: tuple[Fraction, Fraction]) -> bool:
+    """Check if point p is inside triangle abc using barycentric test."""
+    c1 = _cross(_vec_sub(b, a), _vec_sub(p, a))
+    c2 = _cross(_vec_sub(c, b), _vec_sub(p, b))
+    c3 = _cross(_vec_sub(a, c), _vec_sub(p, c))
+    return (c1 >= 0 and c2 >= 0 and c3 >= 0) or (c1 <= 0 and c2 <= 0 and c3 <= 0)
+
+def _find_interior_point(face: Sequence[tuple[Fraction, Fraction]]) -> tuple[Fraction, Fraction]:
+    """Find an interior point of a polygon face (ear centroid)."""
+    face_list = list(face)
+    if _signed_polygon_area(face_list) < 0:
+        face_list = list(reversed(face_list))
+    
+    n = len(face_list)
+    for i in range(n):
+        prev = face_list[(i - 1) % n]
+        curr = face_list[i]
+        nxt = face_list[(i + 1) % n]
+        if not _is_convex(prev, curr, nxt):
+            continue
+        
+        is_ear = True
+        for p in face_list:
+            if p in (prev, curr, nxt):
+                continue
+            if _point_in_triangle(p, prev, curr, nxt):
+                is_ear = False
+                break
+        
+        if is_ear:
+            return (
+                (prev[0] + curr[0] + nxt[0]) / 3,
+                (prev[1] + curr[1] + nxt[1]) / 3
+            )
+    
+    raise RuntimeError("No ear found in face")
+
+def _split_edges(points: Sequence[tuple[Fraction, Fraction]]) -> list[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]]:
+    """Split edges at intersection points."""
+    n = len(points)
+    segments = []
+    for i in range(n):
+        p1 = (Fraction(points[i][0]), Fraction(points[i][1]))
+        p2 = (Fraction(points[(i + 1) % n][0]), Fraction(points[(i + 1) % n][1]))
+        segments.append((p1, p2))
+    
+    intersections: defaultdict[int, set[tuple[Fraction, Fraction]]] = defaultdict(set)
+    for i in range(len(segments)):
+        for j in range(i + 1, len(segments)):
+            inter = segment_intersection(*segments[i], *segments[j])
+            if inter:
+                inter_f = (Fraction(inter[0]), Fraction(inter[1]))
+                intersections[i].add(inter_f)
+                intersections[j].add(inter_f)
+    
+    new_edges = []
+    for i, (p1, p2) in enumerate(segments):
+        pts = {p1, p2} | intersections[i]
+        pts = sorted(pts, key=lambda p: _dot(_vec_sub(p, p1), _vec_sub(p2, p1)))
+        for j in range(len(pts) - 1):
+            new_edges.append((pts[j], pts[j + 1]))
+    
+    return new_edges
+
+def _build_graph(edges: list[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]]) -> defaultdict[tuple[Fraction, Fraction], set[tuple[Fraction, Fraction]]]:
+    """Build undirected graph from edges."""
+    graph: defaultdict[tuple[Fraction, Fraction], set[tuple[Fraction, Fraction]]] = defaultdict(set)
+    for a, b in edges:
+        graph[a].add(b)
+        graph[b].add(a)
+    return graph
+
+def _extract_faces(graph: defaultdict[tuple[Fraction, Fraction], set[tuple[Fraction, Fraction]]]) -> list[list[tuple[Fraction, Fraction]]]:
+    """Extract faces from planar graph by walking directed edges CCW."""
+    used: set[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]] = set()
+    faces: list[list[tuple[Fraction, Fraction]]] = []
+    
+    ordered: dict[tuple[Fraction, Fraction], list[tuple[Fraction, Fraction]]] = {}
+    for v in graph:
+        nbr_list = list(graph[v])
+        nbr_list.sort(key=lambda u: _angle(v, u))
+        ordered[v] = nbr_list
+    
+    for v in graph:
+        for u in ordered[v]:
+            if (v, u) in used:
+                continue
+            
+            face: list[tuple[Fraction, Fraction]] = []
+            start = (v, u)
+            curr = start
+            
+            while True:
+                v1, v2 = curr
+                used.add(curr)
+                face.append(v1)
+                
+                neighbors = ordered[v2]
+                idx = neighbors.index(v1)
+                next_vertex = neighbors[(idx - 1) % len(neighbors)]
+                curr = (v2, next_vertex)
+                
+                if curr == start:
+                    break
+            
+            if len(face) >= 3:
+                faces.append(face)
+    
+    return faces
+
+def _filter_interior_faces(faces: list[list[tuple[Fraction, Fraction]]], original_polygon: Sequence[tuple[Fraction, Fraction]]) -> list[list[tuple[Fraction, Fraction]]]:
+    """Filter faces to keep only those inside the original polygon."""
+    original = [(Fraction(p[0]), Fraction(p[1])) for p in original_polygon]
+    
+    outside_point = (Fraction(-1), Fraction(-1))
+    outside_parity = _point_in_polygon(outside_point, original)
+    
+    interior_faces: list[list[tuple[Fraction, Fraction]]] = []
+    
+    for face in faces:
+        try:
+            pt = _find_interior_point(face)
+        except RuntimeError:
+            continue
+        face_parity = _point_in_polygon(pt, original)
+        if face_parity != outside_parity:
+            interior_faces.append(face)
+    
+    return interior_faces
+
+def _remove_border_face(faces: list[list[tuple[Fraction, Fraction]]]) -> list[list[tuple[Fraction, Fraction]]]:
+    """Remove the outer face (largest by absolute area)."""
+    if len(faces) <= 1:
+        return faces
+    
+    areas = [abs(_signed_polygon_area(f)) for f in faces]
+    max_area = max(areas)
+    
+    result = []
+    removed = False
+    for f, a in zip(faces, areas):
+        if a == max_area and not removed:
+            removed = True
+            continue
+        result.append(f)
+    
+    if not result:
+        return [faces[0]]
+    
+    return result
 
 def _point_in_polygon(pt: tuple[Fraction, Fraction], polygon: Sequence[tuple[Fraction, Fraction]]) -> bool:
     """Even-odd rule point-in-polygon test."""
@@ -580,96 +727,18 @@ def _point_in_polygon(pt: tuple[Fraction, Fraction], polygon: Sequence[tuple[Fra
                 crossings += 1
     return crossings % 2 == 1
 
-def split_polygon(polygon: Sequence[tuple[Fraction, Fraction]]) -> list[Sequence[tuple[Fraction, Fraction]]]:  # might not work
-    pts = [(Fraction(x), Fraction(y)) for x, y in polygon]
-    n = len(pts)
-    if n < 3:
-        return []
+def decompose_polygon(polygon: list[tuple[Fraction, Fraction]]) -> list[list[tuple[Fraction, Fraction]]]:
+    """Decompose a possibly self-intersecting polygon into interior faces.
     
-    # For non-intersecting polygons, just return the polygon as-is
-    if validate_polygon(pts):
-        return [pts]
-
-    edges = [(pts[i], pts[(i + 1) % n]) for i in range(n)]
-
-    # --- collect points along edges ---
-    edge_points: defaultdict[int, set[tuple[Fraction, Fraction]]] = defaultdict(set)
-    for i, (a, b) in enumerate(edges):
-        edge_points[i].add(a)
-        edge_points[i].add(b)
-
-    for i in range(n):
-        for j in range(i + 1, n):
-            if j == i or j == (i + 1) % n or i == (j + 1) % n:
-                continue
-            inter = segment_intersection(edges[i][0], edges[i][1],
-                                         edges[j][0], edges[j][1])
-            if inter:
-                edge_points[i].add(inter)
-                edge_points[j].add(inter)
-
-    # --- build planar graph ---
-    graph: defaultdict[tuple[Fraction, Fraction], set[tuple[Fraction, Fraction]]] = defaultdict(set)
-    for i, (a, b) in enumerate(edges):
-        pts_on_edge = _sort_along_edge(a, b, edge_points[i])
-        for u, v in zip(pts_on_edge, pts_on_edge[1:]):
-            graph[u].add(v)
-            graph[v].add(u)
-
-    # --- CCW ordering at each vertex ---
-    ordered: dict[tuple[Fraction, Fraction], list[tuple[Fraction, Fraction]]] = {}
-    for v, nbrs in graph.items():
-        nbr_list = list(nbrs)
-        nbr_list.sort(key=lambda p: _angle(v, p))
-        ordered[v] = nbr_list
-
-    # --- face extraction ---
-    visited: set[tuple[tuple[Fraction, Fraction], tuple[Fraction, Fraction]]] = set()
-    faces: list[Sequence[tuple[Fraction, Fraction]]] = []
-
-    for u in ordered:
-        for v in ordered[u]:
-            if (u, v) in visited:
-                continue
-            face: list[tuple[Fraction, Fraction]] = []
-            start = (u, v)
-            curr = start
-            safety = 0
-            while True:
-                safety += 1
-                if safety > 10000:
-                    break  # guard against infinite loops
-                a, b = curr
-                if curr in visited:
-                    break
-                visited.add(curr)
-                face.append(a)
-                nbrs = ordered[b]
-                idx = nbrs.index(a)
-                next_v = nbrs[(idx - 1) % len(nbrs)]
-                curr = (b, next_v)
-                if curr == start:
-                    visited.add(curr)
-                    break
-            if len(face) >= 3:
-                faces.append(face)
-
-    if not faces:
-        return []
-
-    # remove outer face (largest by absolute area)
-    outer_index = max(range(len(faces)), key=lambda i: abs(_polygon_area(faces[i])))
-    interior_faces = [faces[i] for i in range(len(faces)) if i != outer_index]
-
-    # even-odd filtering
-    result: list[Sequence[tuple[Fraction, Fraction]]] = []
-    for f in interior_faces:
-        cx = sum(p[0] for p in f) / Fraction(len(f))
-        cy = sum(p[1] for p in f) / Fraction(len(f))
-        # ensure the test point has Fraction components
-        if _point_in_polygon((Fraction(cx), Fraction(cy)), pts):
-            result.append(f)
-    return result
+    Uses the planar graph algorithm from experiment_code.py with exact Fraction
+    arithmetic to extract all interior faces from self-intersecting polygons.
+    """
+    edges = _split_edges(polygon)
+    graph = _build_graph(edges)
+    faces = _extract_faces(graph)
+    interior = _filter_interior_faces(faces, polygon)
+    interior = _remove_border_face(interior)
+    return interior
 
 # --- 3. The Game Engine & GUI ---
 
@@ -1032,10 +1101,11 @@ class PolygonGame(tk.Tk):
                 for c in range(self.cols):
                     total_score += self.cell_instances[r][c].result(calculate_cell_coverage(Fraction(c), Fraction(r), self.current_vertices))
         elif self.polygon_mode == "B":
-            faces = split_polygon(self.current_vertices)
+            faces = decompose_polygon(self.current_vertices)
+            print(*[f"({x},{y})" for x, y in self.current_vertices], sep=", ")
             print(f"Polygon split into {len(faces)} face(s).")
             for face in faces:
-                print([f"({x})/({y})" for x, y in face])
+                print(*[f"({x},{y})" for x, y in face], sep=", ")
             for r in range(self.rows):
                 for c in range(self.cols):
                     total_score += (d := self.cell_instances[r][c].result(custom_sum(calculate_cell_coverage(Fraction(c), Fraction(r), face) for face in faces)))

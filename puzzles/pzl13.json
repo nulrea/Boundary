@@ -1,0 +1,24 @@
+{
+    "cols": 10,
+    "rows": 10,
+    "max_vertices": 12,
+    "goal": "41 11/15",
+    "grid": [
+        ["Bk","T", "T", "Bk","W", "W", "Br","W", "Bl","Lv"],
+        ["W", "W", "W", "C", "W", "W", "W", "W", "Lv","Bl"],
+        ["Gl","Gl","W", "W", "W", "W", "O", "W", "Bl","Lv"],
+        ["Gl","Gl","W", "W", "W", "W", "Bk","Bk","Bk","Bk"],
+        ["W", "W", "W", "R", "R", "W", "C", "W", "W", "C" ],
+        ["W", "Bk","W", "W", "W", "O", "W", "W", "W", "W" ],
+        ["W", "L", "W", "W", "Bk","Bk","W", "W", "W", "W" ],
+        ["W", "Bk","W", "W", "T", "Bk","G", "W", "Pr","W" ],
+        ["W", "W", "M", "W", "W", "Bk","W", "W", "W", "W" ],
+        ["W", "W", "M", "W", "W", "Gd","W", "W", "W", "C" ]
+    ],
+    "polygon_mode": "B",
+    "info": {
+        "creator": "Big Berry",
+        "found": "Electrino (+)",
+        "verified": "You should prove the solution instead of bruteforcing it"
+    }
+}
