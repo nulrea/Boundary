@@ -1,0 +1,31 @@
+{
+  "cols": 3,
+  "rows": 3,
+  "max_vertices": 4,
+  "goal": "0",
+  "grid": [
+    [
+      "R",
+      "C",
+      "T"
+    ],
+    [
+      "L",
+      "W",
+      "Bl"
+    ],
+    [
+      "Gl",
+      "G",
+      "Gd"
+    ]
+  ],
+  "polygon_mode": "R",
+  "info": {
+    "title": "New Board",
+    "creator": "The_upgrater",
+    "found": "-",
+    "verified": "-",
+    "description": ""
+  }
+}

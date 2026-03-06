@@ -1,0 +1,51 @@
+{
+  "cols": 5,
+  "rows": 5,
+  "max_vertices": 6,
+  "goal": "10 1/2",
+  "grid": [
+    [
+      "Bk",
+      "R",
+      "W",
+      "W",
+      "Bk"
+    ],
+    [
+      "W",
+      "C",
+      "Gd",
+      "W",
+      "R"
+    ],
+    [
+      "W",
+      "Gd",
+      "W",
+      "C",
+      "Gd"
+    ],
+    [
+      "W",
+      "G",
+      "C",
+      "C",
+      "Bk"
+    ],
+    [
+      "Bk",
+      "R",
+      "Bk",
+      "W",
+      "Bl"
+    ]
+  ],
+  "polygon_mode": "R",
+  "info": {
+    "title": "New Board",
+    "creator": "The_upgrater",
+    "found": "-",
+    "verified": "-",
+    "description": ""
+  }
+}

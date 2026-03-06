@@ -242,7 +242,14 @@ def str_to_board(board_str: str, _type: Literal["basic"] = "basic") -> dict:
     """Converts a string representation of the board into a 2D list."""
     vertices_index: int = board_str.find(";")
     if vertices_index == -1: raise ValueError("Invalid board string format: Vertices limit is either corrupted or missing.")
-    vertices_limit: int = int(board_str[:vertices_index])
+    vertices_info = board_str[:vertices_index]
+    if vertices_info[-1] not in ["R", "B"]:
+        mode = "R" # Default to R if not specified
+        vertices_info = vertices_info
+    else:
+        mode = vertices_info[-1]
+        vertices_info = vertices_info[:-1]
+    vertices_limit: int = int(vertices_info) if vertices_info.isdigit() else 5 # Default to 5 if not specified
     separator_index: int = board_str.find("X")
     if separator_index == -1:
         raise ValueError("Invalid board string format: Board size is either corrupted or missing.")
@@ -288,6 +295,7 @@ def str_to_board(board_str: str, _type: Literal["basic"] = "basic") -> dict:
         "max_vertices": vertices_limit,
         "goal": Fraction(0, 1), # Not provided
         "grid": board_data,
+        "polygon_mode": mode,
         "info": {
             "creator": "-",
             "found": "-",
