@@ -225,7 +225,7 @@ class EditorApp(tk.Tk):
             cnt = 1
             while i + cnt < len(flat) and flat[i + cnt] == ch:
                 cnt += 1
-            out += ch
+            out += inverted_converter.get(ch, ch)
             if cnt > 1:
                 out += str(cnt)
             i += cnt

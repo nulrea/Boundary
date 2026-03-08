@@ -1,0 +1,22 @@
+{
+  "cols": 7,
+  "rows": 7,
+  "max_vertices": 4,
+  "goal": "14",
+  "grid": [
+        ["W", "Bl","W", "C", "R", "Bk","W"],
+        ["Bk","W", "W", "W", "W", "R", "W"],
+        ["W", "W", "W", "W", "W", "Gd","Bl"],
+        ["W", "C", "W", "W", "Gd","W", "W"],
+        ["Bk","R", "C", "W", "W", "T", "Bk"],
+        ["W", "W", "Bk","Bk","R", "W", "Bk"],
+        ["W", "W", "Bl","Bl","W", "W", "W"]
+  ],
+  "polygon_mode": "R",
+  "info": {
+    "creator": "The_upgrater",
+    "found": "Big Berry",
+    "verified": "-",
+    "description": ""
+  }
+}
