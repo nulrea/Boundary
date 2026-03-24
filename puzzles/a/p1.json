@@ -1,0 +1,78 @@
+{
+    "cols": 7,
+    "rows": 7,
+    "vertices_req": 6,
+    "goal": "5",
+    "grid": [
+        [
+            "Bk",
+            "R",
+            "W",
+            "R",
+            "R",
+            "Bl",
+            "Bk"
+        ],
+        [
+            "Bl",
+            "C",
+            "W",
+            "C",
+            "W",
+            "Gd",
+            "R"
+        ],
+        [
+            "Bk",
+            "W",
+            "Gd",
+            "W",
+            "W",
+            "W",
+            "C"
+        ],
+        [
+            "Gd",
+            "W",
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+        ],
+        [
+            "R",
+            "W",
+            "W",
+            "Gd",
+            "C",
+            "Bk",
+            "Bl"
+        ],
+        [
+            "W",
+            "T",
+            "W",
+            "C",
+            "T",
+            "W",
+            "Bk"
+        ],
+        [
+            "Bl",
+            "W",
+            "Bk",
+            "Bk",
+            "W",
+            "Gd",
+            "Bk"
+        ]
+    ],
+    "info": {
+        "title": "BOUNDARY IS BACK YEAAAAAAAAAAAAH \ud83d\udd25",
+        "creator": "The_upgrater",
+        "found": "?",
+        "verified": "?",
+        "description": "-"
+    }
+}

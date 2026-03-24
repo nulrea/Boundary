@@ -183,7 +183,7 @@ class BonusCell(Cell):
         return Fraction(0) if coverage == 0 else Fraction(1)
 
 # Registry to map string names in JSON to Classes
-CELL_TYPES: dict[str, type[Cell]] = {
+CELL_TYPES_TO_CLASS: dict[str, type[Cell]] = {
     "W": BasicCell,
     "Bk":WallCell,
     "L": CaptureCell,
@@ -203,6 +203,7 @@ CELL_TYPES: dict[str, type[Cell]] = {
     "M": TrapCell,
     "Pf":BonusCell
 }
+CELL_TYPES: list[str] = list(CELL_TYPES_TO_CLASS)
 color_map: dict[Cell, str] = {}
 
 def resizeImage(img: tk.PhotoImage, newWidth: int, newHeight: int) -> tk.PhotoImage:
@@ -1034,7 +1035,7 @@ class PolygonGame(tk.Tk):
             for c in range(self.cols):
                 type_name: str = data['grid'][r][c]
                 # Default to Normal if type not found
-                cell_cls: type[Cell] = CELL_TYPES.get(type_name, BasicCell)
+                cell_cls: type[Cell] = CELL_TYPES_TO_CLASS.get(type_name, BasicCell)
                 cell_obj: Cell = cell_cls(texture_path=f"textures/{type_name}.png")
                 row_list.append(cell_obj)
                 # Special cells

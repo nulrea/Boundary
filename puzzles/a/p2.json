@@ -1,0 +1,50 @@
+{
+    "cols": 5,
+    "rows": 5,
+    "vertices_req": 5,
+    "goal": "8",
+    "grid": [
+        [
+            "G",
+            "W",
+            "W",
+            "R",
+            "Bk"
+        ],
+        [
+            "R",
+            "W",
+            "W",
+            "W",
+            "W"
+        ],
+        [
+            "W",
+            "W",
+            "Bk",
+            "W",
+            "C"
+        ],
+        [
+            "W",
+            "Bl",
+            "R",
+            "W",
+            "L"
+        ],
+        [
+            "Bk",
+            "W",
+            "W",
+            "W",
+            "W"
+        ]
+    ],
+    "info": {
+        "title": "boring version",
+        "creator": "Berry jam",
+        "found": "",
+        "verified": "",
+        "description": ""
+    }
+}
