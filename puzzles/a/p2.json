@@ -1,7 +1,7 @@
 {
     "cols": 5,
     "rows": 5,
-    "vertices_req": 5,
+    "max_vertices": 5,
     "goal": "8",
     "grid": [
         [

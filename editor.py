@@ -235,7 +235,7 @@ class EditorApp(tk.Tk):
         data = {
             "cols": self.cols,
             "rows": self.rows,
-            "vertices_req": self.vertices_req,
+            "max_vertices": self.vertices_req,
             "goal": self.goal,
             "grid": self.grid_data,
             "info": {
